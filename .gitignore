@@ -1,0 +1,15 @@
+# Data files (Too large for GitHub)
+images/
+*.csv
+*.jsonl
+*.jsonl.gz
+
+# Model weights
+*.pth
+
+# Python environment
+__pycache__/
+.venv/
+env/
+.ipynb_checkpoints/
+.DS_Store
