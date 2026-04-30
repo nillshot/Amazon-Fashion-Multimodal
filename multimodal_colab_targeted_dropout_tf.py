@@ -11,12 +11,29 @@
 # ==========================================
 
 import os
+os.environ["TF_USE_LEGACY_KERAS"] = "1" # 최신 TF에서 Keras 2 방식 호환성 확보
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 from PIL import Image
-from transformers import AutoTokenizer, TFRobertaModel
+
+# 최신 코랩 환경의 ImportError 해결을 위한 강제 임포트 로직
+from transformers import AutoTokenizer
+try:
+    # 1. 일반적인 방식 시도
+    from transformers import TFAutoModel
+except ImportError:
+    try:
+        # 2. 직접 경로 시도 (최신 코랩 환경 대응)
+        import transformers.models.auto.modeling_tf_auto as tf_modeling
+        TFAutoModel = tf_modeling.TFAutoModel
+    except Exception as e:
+        # 3. 실패 시 상세 에러 출력
+        print(f"오류: 텐서플로우 모델을 불러올 수 없습니다. ({e})")
+        print("코랩 런타임을 다시 시작하거나, PyTorch 버전을 사용하세요.")
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -154,7 +171,8 @@ class ThreeWayGMU(tf.keras.layers.Layer):
 class MultitaskFashionModelTF(tf.keras.Model):
     def __init__(self, num_cat, hidden_dim=256, **kwargs):
         super().__init__(**kwargs)
-        self.text_encoder = TFRobertaModel.from_pretrained("roberta-base")
+        # TFAutoModel을 사용하여 호환성 문제 해결
+        self.text_encoder = TFAutoModel.from_pretrained("roberta-base")
         self.image_encoder = tf.keras.applications.EfficientNetB0(include_top=False, weights='imagenet', pooling='avg')
         
         self.text_fc = tf.keras.layers.Dense(hidden_dim)

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
-from transformers import AutoTokenizer, RobertaModel, AutoImageProcessor, EfficientNetModel
+from transformers import AutoTokenizer, RobertaModel, AutoImageProcessor, AutoModel
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
@@ -33,7 +33,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Device: {DEVICE}")
 
 # ==========================================
-# 2. 데이터셋 클래스 
+# 2. 데이터셋 클래스
 # ==========================================
 class AmazonFashionFullDataset(Dataset):
     def __init__(self, df, tokenizer, image_processor):
@@ -72,25 +72,22 @@ class AmazonFashionFullDataset(Dataset):
         }
 
 # ==========================================
-# 3. 모델 아키텍처 (Modality Isolation Dropout 적용)
+# 3. 모델 아키텍처 (MobileNet-V2 적용)
 # ==========================================
-class ModalityIsolationDropout(nn.Module):
-    def __init__(self): 
+class TargetedModalityDropout(nn.Module):
+    def __init__(self, text_drop_p=0.8, general_drop_p=0.2): 
         super().__init__()
+        self.text_drop_p = text_drop_p
+        self.general_drop_p = general_drop_p
 
     def forward(self, t, i, tab):
         if not self.training: return t, i, tab
         mask = torch.ones((t.size(0), 3), device=t.device)
         for idx in range(t.size(0)):
-            rand_val = random.random()
-            if rand_val < 0.33:
-                # 샘플 A (33%): 텍스트 가림 -> 오직 [사진 + 정형 데이터]로만 생존해야 함
+            if random.random() < self.text_drop_p:
                 mask[idx, 0] = 0
-            elif rand_val < 0.66:
-                # 샘플 B (33%): 사진 가림 -> 오직 [텍스트 + 정형 데이터]로만 생존해야 함
-                mask[idx, 1] = 0
-            # 샘플 C (나머지 34%): 아무것도 안 가림 -> 모든 정보(텍스트+사진+정형) 활용
-            
+            elif random.random() < self.general_drop_p:
+                mask[idx, random.randint(1, 2)] = 0
         return t * mask[:, 0].unsqueeze(1), i * mask[:, 1].unsqueeze(1), tab * mask[:, 2].unsqueeze(1)
 
 class ThreeWayGMU(nn.Module):
@@ -105,16 +102,17 @@ class ThreeWayGMU(nn.Module):
 class MultitaskFashionModel(nn.Module):
     def __init__(self, num_cat, hidden_dim=256):
         super().__init__()
-        self.text_encoder = RobertaModel.from_pretrained("roberta-base", use_safetensors=True)
-        self.image_encoder = EfficientNetModel.from_pretrained("google/efficientnet-b0", use_safetensors=True)
+        self.text_encoder = RobertaModel.from_pretrained("roberta-base")
+        # 백본을 가벼운 MobileNet-V2로 교체
+        self.image_encoder = AutoModel.from_pretrained("google/mobilenet_v2_1.0_224")
         
         self.text_fc = nn.Linear(768, hidden_dim)
-        self.image_fc = nn.Linear(1280, hidden_dim)
+        self.image_fc = nn.Linear(1280, hidden_dim) # MobileNetV2의 출력 차원도 1280
         self.cat_emb = nn.Embedding(num_cat, 32)
         self.tab_fc = nn.Sequential(nn.Linear(1 + 1 + 32, hidden_dim), nn.ReLU())
         
-        # 새로운 모달리티 격리 훈련(Modality Isolation) 적용
-        self.modality_dropout = ModalityIsolationDropout()
+        # 학교에서 배운 Targeted Modality Dropout 적용
+        self.modality_dropout = TargetedModalityDropout()
         self.gmu = ThreeWayGMU(hidden_dim)
         
         self.text_regressor = nn.Linear(hidden_dim, 1)
@@ -131,13 +129,19 @@ class MultitaskFashionModel(nn.Module):
 
     def forward(self, ids, mask, pixels, price, miss, cat):
         t_feat_raw = self.text_fc(self.text_encoder(ids, mask).pooler_output)
-        i_feat_raw = self.image_fc(self.image_encoder(pixels).pooler_output.flatten(1))
+        
+        # MobileNetV2는 pooler_output이 없을 수 있으므로 last_hidden_state를 풀링 처리
+        img_out = self.image_encoder(pixels)
+        if hasattr(img_out, 'pooler_output') and img_out.pooler_output is not None:
+            i_feat_raw = self.image_fc(img_out.pooler_output.flatten(1))
+        else:
+            i_feat_raw = self.image_fc(img_out.last_hidden_state.mean(dim=[2, 3]))
+            
         tab_feat_raw = self.tab_fc(torch.cat([price, miss, self.cat_emb(cat)], dim=1))
         
         out_text = torch.sigmoid(self.text_regressor(t_feat_raw)).squeeze() * 4 + 1
         out_image = torch.sigmoid(self.image_regressor(i_feat_raw)).squeeze() * 4 + 1
         
-        # 훈련 중일 때만 드롭아웃 동작
         t_feat, i_feat, tab_feat = self.modality_dropout(t_feat_raw, i_feat_raw, tab_feat_raw)
         fused, gates = self.gmu(t_feat, i_feat, tab_feat)
         out_fused = torch.sigmoid(self.fused_regressor(fused)).squeeze() * 4 + 1
@@ -218,7 +222,8 @@ def main():
     train_df, val_df = train_test_split(df, test_size=0.1, random_state=42)
     
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
-    image_processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
+    # 이미지 프로세서를 MobileNet용으로 교체
+    image_processor = AutoImageProcessor.from_pretrained("google/mobilenet_v2_1.0_224")
     
     train_loader = DataLoader(AmazonFashionFullDataset(train_df, tokenizer, image_processor), batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(AmazonFashionFullDataset(val_df, tokenizer, image_processor), batch_size=BATCH_SIZE)
@@ -251,9 +256,8 @@ def main():
         
         if val_mae < best_mae:
             best_mae = val_mae
-            # 이전 최고 기록 파일과 겹치지 않게 이름 변경
-            torch.save(model.state_dict(), "best_targeted_dropout_model.pth")
-            print(f"New Best Targeted Dropout Model Saved (MAE: {best_mae:.4f})\n")
+            torch.save(model.state_dict(), "best_mobile_version_model.pth")
+            print(f"New Best Mobile Version Model Saved (MAE: {best_mae:.4f})\n")
         else:
             print()
 

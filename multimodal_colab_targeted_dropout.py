@@ -1,3 +1,15 @@
+# ==========================================
+# Google Colab 전용: 타겟 드롭아웃 멀티모달 학습 스크립트
+# ==========================================
+# 실행 전 필수 작업 (Colab 환경):
+# 1. Colab에서 새 노트를 열고 런타임 유형을 'GPU (T4)'로 설정하세요.
+# 2. 첫 번째 셀에 아래 명령어를 넣고 실행하여 라이브러리를 설치하세요:
+#    !pip install transformers accelerate scikit-learn pandas pillow tqdm
+# 3. 구글 드라이브의 '내 드라이브/BigData' 폴더 안에 아래 파일/폴더가 있어야 합니다:
+#    - fashion_train_subset_2_with_images.csv
+#    - images/ 폴더 (또는 그 안의 이미지들)
+# ==========================================
+
 import os
 import pandas as pd
 import numpy as np
@@ -17,23 +29,31 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 warnings.filterwarnings("ignore")
 
 # ==========================================
-# 1. 하이퍼파라미터 및 설정
+# 1. 환경 설정 (구글 드라이브 마운트)
 # ==========================================
-CSV_FILE = 'fashion_train_subset_2_with_images.csv'
-BATCH_SIZE = 4
-ACCUMULATION_STEPS = 4
+print("구글 드라이브 마운트를 시작합니다...")
+from google.colab import drive
+drive.mount('/content/drive')
+
+BASE_DIR = '/content/drive/MyDrive/BigData'
+CSV_FILE = os.path.join(BASE_DIR, 'fashion_train_subset_2_with_images.csv')
+# 구글 드라이브가 아닌 코랩 로컬 SSD 경로로 수정하여 속도를 10배 이상 향상시킵니다.
+IMAGE_DIR = '/content/images' 
+
+# 코랩 T4 GPU(16GB VRAM)에 맞춘 넉넉한 배치 사이즈
+BATCH_SIZE = 16 
+ACCUMULATION_STEPS = 1
 
 EPOCHS_PHASE1 = 2
 EPOCHS_PHASE2 = 5
-
 LR_PHASE1 = 1e-3
 LR_PHASE2 = 1e-5
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Device: {DEVICE}")
+print(f"\n사용 기기: {DEVICE}")
 
 # ==========================================
-# 2. 데이터셋 클래스 
+# 2. 데이터셋 클래스
 # ==========================================
 class AmazonFashionFullDataset(Dataset):
     def __init__(self, df, tokenizer, image_processor):
@@ -49,7 +69,11 @@ class AmazonFashionFullDataset(Dataset):
         text = str(row["input_text"])
         enc = self.tokenizer(text, padding="max_length", truncation=True, max_length=128, return_tensors="pt")
         
-        img_path = str(row["image_path"]).replace("\\", "/")
+        # 로컬 경로를 구글 드라이브 경로로 변경
+        original_img_path = str(row["image_path"]).replace("\\", "/")
+        img_filename = os.path.basename(original_img_path)
+        img_path = os.path.join(IMAGE_DIR, img_filename)
+
         try:
             img = Image.open(img_path).convert("RGB")
             pixel_values = self.image_processor(images=img, return_tensors='pt')['pixel_values'].squeeze(0)
@@ -72,25 +96,24 @@ class AmazonFashionFullDataset(Dataset):
         }
 
 # ==========================================
-# 3. 모델 아키텍처 (Modality Isolation Dropout 적용)
+# 3. 모델 아키텍처 (Targeted Modality Dropout 적용)
 # ==========================================
-class ModalityIsolationDropout(nn.Module):
-    def __init__(self): 
+class TargetedModalityDropout(nn.Module):
+    def __init__(self, text_drop_p=0.8, general_drop_p=0.2): 
         super().__init__()
+        self.text_drop_p = text_drop_p
+        self.general_drop_p = general_drop_p
 
     def forward(self, t, i, tab):
         if not self.training: return t, i, tab
         mask = torch.ones((t.size(0), 3), device=t.device)
         for idx in range(t.size(0)):
-            rand_val = random.random()
-            if rand_val < 0.33:
-                # 샘플 A (33%): 텍스트 가림 -> 오직 [사진 + 정형 데이터]로만 생존해야 함
+            # 1. 텍스트 강제 마스킹 (80% 확률)
+            if random.random() < self.text_drop_p:
                 mask[idx, 0] = 0
-            elif rand_val < 0.66:
-                # 샘플 B (33%): 사진 가림 -> 오직 [텍스트 + 정형 데이터]로만 생존해야 함
-                mask[idx, 1] = 0
-            # 샘플 C (나머지 34%): 아무것도 안 가림 -> 모든 정보(텍스트+사진+정형) 활용
-            
+            # 2. 이미지/정형 데이터 일반화 (20% 확률)
+            elif random.random() < self.general_drop_p:
+                mask[idx, random.randint(1, 2)] = 0
         return t * mask[:, 0].unsqueeze(1), i * mask[:, 1].unsqueeze(1), tab * mask[:, 2].unsqueeze(1)
 
 class ThreeWayGMU(nn.Module):
@@ -113,8 +136,7 @@ class MultitaskFashionModel(nn.Module):
         self.cat_emb = nn.Embedding(num_cat, 32)
         self.tab_fc = nn.Sequential(nn.Linear(1 + 1 + 32, hidden_dim), nn.ReLU())
         
-        # 새로운 모달리티 격리 훈련(Modality Isolation) 적용
-        self.modality_dropout = ModalityIsolationDropout()
+        self.modality_dropout = TargetedModalityDropout(0.8, 0.2)
         self.gmu = ThreeWayGMU(hidden_dim)
         
         self.text_regressor = nn.Linear(hidden_dim, 1)
@@ -137,7 +159,6 @@ class MultitaskFashionModel(nn.Module):
         out_text = torch.sigmoid(self.text_regressor(t_feat_raw)).squeeze() * 4 + 1
         out_image = torch.sigmoid(self.image_regressor(i_feat_raw)).squeeze() * 4 + 1
         
-        # 훈련 중일 때만 드롭아웃 동작
         t_feat, i_feat, tab_feat = self.modality_dropout(t_feat_raw, i_feat_raw, tab_feat_raw)
         fused, gates = self.gmu(t_feat, i_feat, tab_feat)
         out_fused = torch.sigmoid(self.fused_regressor(fused)).squeeze() * 4 + 1
@@ -145,7 +166,7 @@ class MultitaskFashionModel(nn.Module):
         return out_fused, out_text, out_image, gates
 
 # ==========================================
-# 4. 유틸리티 (학습 및 평가)
+# 4. 학습/평가 유틸리티
 # ==========================================
 def weighted_mse_loss(pred, target):
     weight_map = {1.0: 4.0, 2.0: 4.0, 3.0: 3.0, 4.0: 2.0, 5.0: 1.0}
@@ -160,7 +181,6 @@ def train_epoch(model, loader, optimizer, scheduler, device, acc_steps, epoch, p
     pbar = tqdm(loader, desc=f"[{phase_name}] Epoch {epoch} Train")
     for i, batch in enumerate(pbar):
         target = batch["target"].to(device)
-        
         out_fused, out_text, out_image, _ = model(
             batch["input_ids"].to(device), batch["attention_mask"].to(device), 
             batch["pixel_values"].to(device), batch["price"].to(device), 
@@ -170,7 +190,6 @@ def train_epoch(model, loader, optimizer, scheduler, device, acc_steps, epoch, p
         loss_fused = weighted_mse_loss(out_fused, target)
         loss_text = weighted_mse_loss(out_text, target)
         loss_image = weighted_mse_loss(out_image, target)
-        
         loss = (loss_fused + 0.5 * loss_text + 0.5 * loss_image) / acc_steps
         loss.backward()
         
@@ -195,7 +214,6 @@ def evaluate(model, loader, device, epoch, phase_name):
                 batch["pixel_values"].to(device), batch["price"].to(device), 
                 batch["price_missing"].to(device), batch["category_id"].to(device)
             )
-            
             loss = weighted_mse_loss(out_fused, target)
             total_loss += loss.item()
             preds.extend(out_fused.cpu().numpy())
@@ -208,10 +226,14 @@ def evaluate(model, loader, device, epoch, phase_name):
     return total_loss / len(loader), mse, mae, avg_gate
 
 # ==========================================
-# 5. 실행부
+# 5. 메인 실행부
 # ==========================================
 def main():
-    print("1. Data loading...")
+    if not os.path.exists(CSV_FILE):
+        print(f"오류: {CSV_FILE} 파일을 찾을 수 없습니다. 경로 설정을 다시 확인해주세요.")
+        return
+
+    print("1. 데이터 로딩 중...")
     df = pd.read_csv(CSV_FILE).fillna({"input_text": "No review"})
     le = LabelEncoder()
     df["category_id"] = le.fit_transform(df["sub_category"].astype(str))
@@ -226,7 +248,7 @@ def main():
     model = MultitaskFashionModel(num_cat=df["category_id"].nunique()).to(DEVICE)
     best_mae = float('inf')
 
-    print("\nPHASE 1: Feature Extraction (Backbone Frozen)")
+    print("\nPHASE 1: Feature Extraction (백본 모델 동결)")
     model.freeze_backbones()
     optimizer_p1 = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=LR_PHASE1)
     
@@ -237,10 +259,10 @@ def main():
         print(f"Val MAE: {val_mae:.4f} | Val MSE: {val_mse:.4f}")
         print(f"GMU Gate -> Text: {avg_gate[0]:.2f}, Image: {avg_gate[1]:.2f}, Tabular: {avg_gate[2]:.2f}\n")
 
-    print("\nPHASE 2: Full Fine-tuning (All Layers Unfrozen)")
+    print("\nPHASE 2: Full Fine-tuning (전체 모델 미세조정)")
     model.unfreeze_backbones()
     optimizer_p2 = torch.optim.AdamW(model.parameters(), lr=LR_PHASE2)
-    scheduler_p2 = CosineAnnealingLR(optimizer_p2, T_max=EPOCHS_PHASE2 * (len(train_loader) // ACCUMULATION_STEPS))
+    scheduler_p2 = CosineAnnealingLR(optimizer_p2, T_max=EPOCHS_PHASE2 * len(train_loader))
     
     for epoch in range(1, EPOCHS_PHASE2 + 1):
         train_loss = train_epoch(model, train_loader, optimizer_p2, scheduler_p2, DEVICE, ACCUMULATION_STEPS, epoch, "Phase 2")
@@ -251,9 +273,9 @@ def main():
         
         if val_mae < best_mae:
             best_mae = val_mae
-            # 이전 최고 기록 파일과 겹치지 않게 이름 변경
-            torch.save(model.state_dict(), "best_targeted_dropout_model.pth")
-            print(f"New Best Targeted Dropout Model Saved (MAE: {best_mae:.4f})\n")
+            model_save_path = os.path.join(BASE_DIR, "best_colab_targeted_dropout_model.pth")
+            torch.save(model.state_dict(), model_save_path)
+            print(f"🌟 새로운 최고 성능 모델 저장 완료! (MAE: {best_mae:.4f}) -> {model_save_path}\n")
         else:
             print()
 

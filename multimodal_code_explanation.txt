@@ -1,0 +1,46 @@
+[멀티모달 프로젝트 핵심 코드 기술 해설 (PyTorch to Keras/TF)]
+
+이 문서는 프로젝트에 사용된 PyTorch 기반의 고급 기술들을 Keras/TensorFlow 개념으로 번역하여 설명합니다.
+
+1. 데이터 파이프라인 (Dataset -> Sequence)
+- PyTorch: 'AmazonFashionFullDataset' 클래스
+- Keras 매칭: tf.keras.utils.Sequence 또는 tf.data.Dataset
+- 역할: 이미지를 읽고(PIL), 텍스트를 토큰화하며, 데이터를 배치(Batch) 단위로 모델에 공급합니다. Keras의 fit_generator에서 사용하는 Sequence와 동일한 논리입니다.
+
+2. 모델 구조 (nn.Module -> tf.keras.Model)
+- PyTorch: 'MultitaskFashionModel(nn.Module)'
+- Keras 매칭: 'class MultitaskModel(tf.keras.Model)' (Subclassing 방식)
+- 핵심 레이어 매칭:
+  * nn.Linear(in, out)  =>  layers.Dense(units=out)
+  * nn.Embedding        =>  layers.Embedding
+  * nn.Sequential       =>  tf.keras.Sequential
+
+3. 백본(Backbone) 모델과 전이학습
+- PyTorch: RobertaModel, EfficientNetModel
+- Keras 매칭: TFRobertaModel, tf.keras.applications.EfficientNetB0
+- 역할: 사전 학습된 모델을 불러와 특징(Feature)을 추출합니다. 
+- 동결(Freezing) 기법: 
+  * PyTorch: param.requires_grad = False
+  * Keras: layer.trainable = False
+  * 설명: Phase 1에서 기존 지식을 보존하기 위해 백본의 가중치를 고정하는 Keras의 'Fine-tuning' 전략과 동일합니다.
+
+4. 핵심 모듈: 3-Way GMU (Fusion Layer)
+- 논리: 텍스트, 이미지, 가격 정보를 Concat(결합)한 뒤 Dense 레이어와 Softmax를 통과시켜 3개의 가중치(Gate)를 만듭니다.
+- 역할: Keras의 'layers.Multiply' 및 'layers.Add'를 조합한 Attention 메커니즘으로, 어떤 모달리티가 평점 예측에 더 중요한지 모델이 스스로 판단하게 합니다.
+
+5. 멀티태스크 학습 (Multi-task Loss) - V2의 핵심
+- PyTorch 로직: 
+  fused_out, text_out, image_out 세 가지 결과에 대해 개별 Loss를 계산 후 합산.
+- Keras 매칭: 
+  model.compile(loss=['mse', 'mse', 'mse'], loss_weights=[1.0, 0.5, 0.5])
+- 역할: "사진만 보고 맞춰봐", "글만 보고 맞춰봐"라는 서브 미션을 주어 모델이 가격이라는 쉬운 지름길(Shortcut)로 빠지지 못하게 감시하는 역할입니다.
+
+6. 손실 함수 (Weighted MSE Loss)
+- 논리: 평점 데이터의 불균형(5점이 압도적으로 많음)을 해결하기 위한 장치입니다.
+- Keras 매칭: sample_weight 또는 custom loss function
+- 역할: 맞추기 어려운 1~3점 평점이 틀렸을 때 모델에 더 큰 벌금을 부여하여 전 구간에서 정확도를 높입니다.
+
+7. 최적화 기법 (Differential Learning Rate)
+- 논리: 모델의 부위별로 학습 속도(LR)를 다르게 설정합니다.
+- Keras 매칭: 여러 개의 Optimizer를 사용하거나, Layer별로 LR을 다르게 적용하는 Custom Training Loop.
+- 역할: 이미 똑똑한 백본(RoBERTa)은 아주 조금만 수정하고, 새로 만든 Fusion 레이어는 빠르게 학습시켜 조화를 이루게 합니다.
