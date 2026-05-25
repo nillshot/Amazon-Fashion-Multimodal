@@ -1,0 +1,123 @@
+2026-05-18 09:18:38 | INFO | V9 RunPod Args: {'data_csv': '/workspace/fashion_train_subset_2_with_images.csv', 'text_pretrained': '/workspace/pretrained_fashion_roberta.pth', 'image_pretrained': '/workspace/pretrained_fashion_mobilenet.pth', 'output_dir': '/workspace/outputs', 'batch_size': 8, 'accum_steps': 4, 'epochs': 10, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 9.0, 'resume': False, 'smoke_test': False, 'no_amp': False}
+2026-05-18 09:18:39 | INFO | Device: cuda | AMP Enabled: True
+2026-05-18 09:18:39 | INFO | Data loading from: /workspace/fashion_train_subset_2_with_images.csv
+2026-05-18 09:18:40 | INFO | Train: 52558 | Val: 5840 | Total Categories: 12
+2026-05-18 09:18:48 | INFO | Model V9 params: 132.2M
+2026-05-18 09:18:48 | INFO | 🔥 loading CLIP Pretrained RoBERTa weights from /workspace/pretrained_fashion_roberta.pth
+2026-05-18 09:18:49 | INFO | 🔥 loading CLIP Pretrained MobileNet weights from /workspace/pretrained_fashion_mobilenet.pth
+2026-05-18 09:18:49 | INFO | ✅ Fashion CLIP 사전학습 가중치 이식 성공!
+2026-05-18 09:18:49 | INFO | 안전 제한 종료 시각: 18:18:49
+2026-05-18 09:18:49 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-18 09:18:50 | ERROR | 예상치 못한 에러가 발생했습니다: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+Traceback (most recent call last):
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 607, in main
+    train_loss, interrupted = train_one_epoch(
+                              ^^^^^^^^^^^^^^^^
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 392, in train_one_epoch
+    out_fused, out_text, out_image, _, t_pooled, i_seq, avg_t_attn_w, t_attended_pooled = model(
+                                                                                          ^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 333, in forward
+    t_outputs = self.text_encoder(ids, attention_mask=mask)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/transformers/models/roberta/modeling_roberta.py", line 801, in forward
+    extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(attention_mask, input_shape)
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/transformers/modeling_utils.py", line 1078, in get_extended_attention_mask
+    extended_attention_mask = extended_attention_mask.to(dtype=dtype)  # fp16 compatibility
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-05-18 09:18:50 | INFO | 총 소요 시간: 0.00시간 | 최종 Best MAE = inf
+2026-05-18 09:21:21 | INFO | V9 RunPod Args: {'data_csv': '/workspace/fashion_train_subset_2_with_images.csv', 'text_pretrained': '/workspace/pretrained_fashion_roberta.pth', 'image_pretrained': '/workspace/pretrained_fashion_mobilenet.pth', 'output_dir': '/workspace/outputs', 'batch_size': 8, 'accum_steps': 4, 'epochs': 10, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 9.0, 'resume': False, 'smoke_test': False, 'no_amp': False}
+2026-05-18 09:21:21 | INFO | Device: cuda | AMP Enabled: True
+2026-05-18 09:21:21 | INFO | Data loading from: /workspace/fashion_train_subset_2_with_images.csv
+2026-05-18 09:21:22 | INFO | Train: 52558 | Val: 5840 | Total Categories: 12
+2026-05-18 09:21:23 | INFO | Model V9 params: 132.2M
+2026-05-18 09:21:23 | INFO | 🔥 loading CLIP Pretrained RoBERTa weights from /workspace/pretrained_fashion_roberta.pth
+2026-05-18 09:21:23 | INFO | 🔥 loading CLIP Pretrained MobileNet weights from /workspace/pretrained_fashion_mobilenet.pth
+2026-05-18 09:21:23 | INFO | ✅ Fashion CLIP 사전학습 가중치 이식 성공!
+2026-05-18 09:21:23 | INFO | 안전 제한 종료 시각: 18:21:23
+2026-05-18 09:21:23 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-18 09:21:24 | ERROR | 예상치 못한 에러가 발생했습니다: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+Traceback (most recent call last):
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 607, in main
+    train_loss, interrupted = train_one_epoch(
+                              ^^^^^^^^^^^^^^^^
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 392, in train_one_epoch
+    out_fused, out_text, out_image, _, t_pooled, i_seq, avg_t_attn_w, t_attended_pooled = model(
+                                                                                          ^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/multimodal_mobile_version_v9_runpod.py", line 333, in forward
+    t_outputs = self.text_encoder(ids, attention_mask=mask)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/transformers/models/roberta/modeling_roberta.py", line 801, in forward
+    extended_attention_mask: torch.Tensor = self.get_extended_attention_mask(attention_mask, input_shape)
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/transformers/modeling_utils.py", line 1078, in get_extended_attention_mask
+    extended_attention_mask = extended_attention_mask.to(dtype=dtype)  # fp16 compatibility
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: no kernel image is available for execution on the device
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-05-18 09:21:24 | INFO | 총 소요 시간: 0.00시간 | 최종 Best MAE = inf
+2026-05-18 09:30:33 | INFO | V9 RunPod Args: {'data_csv': '/workspace/fashion_train_subset_2_with_images.csv', 'text_pretrained': '/workspace/pretrained_fashion_roberta.pth', 'image_pretrained': '/workspace/pretrained_fashion_mobilenet.pth', 'output_dir': '/workspace/outputs', 'batch_size': 8, 'accum_steps': 4, 'epochs': 10, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 9.0, 'resume': False, 'smoke_test': False, 'no_amp': False}
+2026-05-18 09:30:34 | INFO | Device: cuda | AMP Enabled: True
+2026-05-18 09:30:34 | INFO | Data loading from: /workspace/fashion_train_subset_2_with_images.csv
+2026-05-18 09:30:34 | INFO | Train: 52558 | Val: 5840 | Total Categories: 12
+2026-05-18 09:30:35 | INFO | Model V9 params: 132.2M
+2026-05-18 09:30:35 | INFO | 🔥 loading CLIP Pretrained RoBERTa weights from /workspace/pretrained_fashion_roberta.pth
+2026-05-18 09:30:36 | INFO | 🔥 loading CLIP Pretrained MobileNet weights from /workspace/pretrained_fashion_mobilenet.pth
+2026-05-18 09:30:36 | INFO | ✅ Fashion CLIP 사전학습 가중치 이식 성공!
+2026-05-18 09:30:36 | INFO | 안전 제한 종료 시각: 18:30:36
+2026-05-18 09:30:36 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-18 09:38:43 | INFO | [P1-E1] train=8.4236 val_mae=1.4003 gate=T0.93/I0.03/Tab0.04
+2026-05-18 09:46:27 | INFO | [P1-E2] train=7.9099 val_mae=1.3704 gate=T0.93/I0.03/Tab0.04
+2026-05-18 09:46:28 | INFO | --- [Phase 2] Text Encoder Unfrozen ---
+2026-05-18 09:55:20 | INFO | [P2-E3] train=2.7766 val_mae=0.4466 gate=T0.99/I0.00/Tab0.01
+2026-05-18 09:55:21 | INFO | 🌟 최적 성능 가중치 갱신: MAE=0.4466 -> /workspace/outputs/best_mobile_version_v9_model.pth
+2026-05-18 10:04:02 | INFO | [P2-E4] train=1.6440 val_mae=0.3976 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:04:03 | INFO | 🌟 최적 성능 가중치 갱신: MAE=0.3976 -> /workspace/outputs/best_mobile_version_v9_model.pth
+2026-05-18 10:12:38 | INFO | [P2-E5] train=1.3843 val_mae=0.3830 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:12:39 | INFO | 🌟 최적 성능 가중치 갱신: MAE=0.3830 -> /workspace/outputs/best_mobile_version_v9_model.pth
+2026-05-18 10:21:18 | INFO | [P2-E6] train=1.2052 val_mae=0.3630 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:21:19 | INFO | 🌟 최적 성능 가중치 갱신: MAE=0.3630 -> /workspace/outputs/best_mobile_version_v9_model.pth
+2026-05-18 10:30:04 | INFO | [P2-E7] train=1.0718 val_mae=0.3911 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:38:50 | INFO | [P2-E8] train=0.9696 val_mae=0.3658 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:47:42 | INFO | [P2-E9] train=0.9077 val_mae=0.3714 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:56:32 | INFO | [P2-E10] train=0.8904 val_mae=0.3662 gate=T1.00/I0.00/Tab0.00
+2026-05-18 10:56:35 | INFO | ✅ 학습 성공적으로 완료! 최우수 MAE: 0.3630
+2026-05-18 10:56:35 | INFO | 총 소요 시간: 1.43시간 | 최종 Best MAE = 0.3630

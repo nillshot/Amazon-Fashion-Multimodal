@@ -1,0 +1,42 @@
+2026-05-08 00:33:01 | INFO | Args: {'data_csv': './fashion_train_subset_2_with_images.csv', 'output_dir': './test_outputs', 'batch_size': 4, 'accum_steps': 4, 'epochs': 5, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 11.5, 'resume': False, 'smoke_test': True, 'no_amp': False}
+2026-05-08 00:33:01 | INFO | 🧪 SMOKE TEST 모드 — 소량 데이터로 파이프라인만 검증
+2026-05-08 00:33:01 | INFO | Device: cuda | AMP: True
+2026-05-08 00:33:01 | INFO | Data loading from: ./fashion_train_subset_2_with_images.csv
+2026-05-08 00:33:01 | INFO | Smoke test sample size: 32
+2026-05-08 00:33:01 | INFO | Train: 28 | Val: 4 | Categories: 8
+2026-05-08 00:33:05 | INFO | Model params: 132.2M
+2026-05-08 00:33:05 | INFO | Deadline: 12:03:05
+2026-05-08 00:33:05 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-08 00:33:12 | ERROR | 예상치 못한 에러: CUDA error: device-side assert triggered
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+Traceback (most recent call last):
+  File "C:\Users\육태정\Desktop\BigData\multimodal_mobile_version_v8_runpod.py", line 556, in main
+    train_loss, interrupted = train_one_epoch(
+                              ^^^^^^^^^^^^^^^^
+  File "C:\Users\육태정\Desktop\BigData\multimodal_mobile_version_v8_runpod.py", line 356, in train_one_epoch
+    loss_fused = weighted_mse_loss(out_fused, target)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\육태정\Desktop\BigData\multimodal_mobile_version_v8_runpod.py", line 324, in weighted_mse_loss
+    weight_lookup = torch.tensor([0.0, 4.0, 4.0, 3.0, 2.0, 1.0],
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: device-side assert triggered
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+2026-05-08 00:33:12 | INFO | 총 경과 시간: 0.00h | best_mae=inf
+2026-05-08 00:36:18 | INFO | Args: {'data_csv': './fashion_train_subset_2_with_images.csv', 'output_dir': './test_outputs', 'batch_size': 4, 'accum_steps': 4, 'epochs': 5, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 11.5, 'resume': False, 'smoke_test': True, 'no_amp': False}
+2026-05-08 00:36:18 | INFO | 🧪 SMOKE TEST 모드 — 소량 데이터로 파이프라인만 검증
+2026-05-08 00:36:18 | INFO | Device: cuda | AMP: True
+2026-05-08 00:36:18 | INFO | Data loading from: ./fashion_train_subset_2_with_images.csv
+2026-05-08 00:36:19 | INFO | Smoke test sample size: 32
+2026-05-08 00:36:19 | INFO | Train: 28 | Val: 4 | Categories: 12
+2026-05-08 00:36:22 | INFO | Model params: 132.2M
+2026-05-08 00:36:22 | INFO | Deadline: 12:06:22
+2026-05-08 00:36:22 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-08 00:36:28 | INFO | [P1-E1] train=6.2318 val_mae=1.0898 gate=T0.34/I0.45/Tab0.21
+2026-05-08 00:36:29 | INFO | --- [Phase 2] Text Encoder Unfrozen ---
+2026-05-08 00:36:29 | INFO | ✅ 학습 완료. Best MAE: inf
+2026-05-08 00:36:29 | INFO | 총 경과 시간: 0.00h | best_mae=inf

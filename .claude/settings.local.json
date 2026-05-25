@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc --version)",
+      "Bash(python -c \"import weasyprint; print\\('weasyprint OK'\\)\")",
+      "Bash(python -c \"import pdfkit; print\\('pdfkit OK'\\)\")",
+      "Bash(python -c \"import reportlab; print\\('reportlab OK'\\)\")",
+      "Bash(pip list *)",
+      "Bash(pip install *)",
+      "Bash(python -c \"import fpdf; print\\('fpdf2 OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python generate_pdf_report.py)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(python -c \"import os; size=os.path.getsize\\('multimodal_fashion_model_report.pdf'\\); print\\(f'File size: {size/1024:.1f} KB'\\)\")",
+      "Bash(start \"\" \"c:\\\\Users\\\\육태정\\\\Desktop\\\\BigData\\\\multimodal_fashion_model_report.pdf\")"
+    ]
+  }
+}

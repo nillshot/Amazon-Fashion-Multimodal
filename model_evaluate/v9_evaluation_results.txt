@@ -1,0 +1,11 @@
+================ V9 COMPARISON ================
+Model V9 v1 (Existing):
+  - MAE: 0.3532
+  - MSE: 0.3345
+  - R2 Score: 0.8368
+
+Model V9 v2 (With Pretrained weights):
+  - MAE: 0.3630
+  - MSE: 0.3656
+  - R2 Score: 0.8217
+===============================================
