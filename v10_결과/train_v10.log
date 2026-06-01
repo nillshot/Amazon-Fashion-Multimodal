@@ -1,0 +1,24 @@
+2026-05-30 07:29:57 | INFO | V10 RunPod Args: {'data_csv': '/workspace/fashion_train_subset_3_with_meta_text_v10.csv', 'output_dir': '/workspace/outputs_v10', 'batch_size': 2, 'accum_steps': 4, 'epochs': 10, 'phase1_epochs': 2, 'num_workers': 4, 'seed': 42, 'max_hours': 11.5, 'resume': False, 'smoke_test': False, 'no_amp': False}
+2026-05-30 07:29:57 | INFO | Device: cuda | AMP Enabled: True
+2026-05-30 07:29:57 | INFO | Data loading from: /workspace/fashion_train_subset_3_with_meta_text_v10.csv
+2026-05-30 07:29:58 | INFO | Train: 52558 | Val: 5840 | Total Categories: 12
+2026-05-30 07:29:59 | INFO | Model V10 params: 132.6M
+2026-05-30 07:29:59 | INFO | 안전 제한 종료 시각: 18:59:59
+2026-05-30 07:29:59 | INFO | --- [Phase 1] Text Encoder Frozen ---
+2026-05-30 08:00:12 | INFO | [P1-E1] train=4.7410 val_mae=0.4091 gate=Seller0.00/Review1.00/Image0.00/Tab0.00
+2026-05-30 08:29:29 | INFO | [P1-E2] train=4.1563 val_mae=0.3951 gate=Seller0.04/Review0.80/Image0.06/Tab0.09
+2026-05-30 08:29:31 | INFO | --- [Phase 2] Text Encoder Unfrozen ---
+2026-05-30 09:14:54 | INFO | [P2-E3] train=4.2128 val_mae=0.3428 gate=Seller0.01/Review0.95/Image0.02/Tab0.02
+2026-05-30 09:14:55 | INFO | 🌟 최적 V10 가중치 저장: MAE=0.3428 -> /workspace/outputs_v10/best_mobile_version_v10_model.pth
+2026-05-30 10:01:02 | INFO | [P2-E4] train=3.8132 val_mae=0.3249 gate=Seller0.00/Review0.71/Image0.01/Tab0.27
+2026-05-30 10:01:04 | INFO | 🌟 최적 V10 가중치 저장: MAE=0.3249 -> /workspace/outputs_v10/best_mobile_version_v10_model.pth
+2026-05-30 10:49:07 | INFO | [P2-E5] train=3.5841 val_mae=0.3346 gate=Seller0.00/Review0.90/Image0.00/Tab0.09
+2026-05-30 11:36:16 | INFO | [P2-E6] train=3.3503 val_mae=0.3300 gate=Seller0.00/Review0.71/Image0.00/Tab0.29
+2026-05-30 12:21:40 | INFO | [P2-E7] train=3.1658 val_mae=0.3332 gate=Seller0.00/Review0.69/Image0.00/Tab0.31
+2026-05-30 13:07:07 | INFO | [P2-E8] train=3.0085 val_mae=0.3304 gate=Seller0.00/Review0.82/Image0.00/Tab0.18
+2026-05-30 13:52:51 | INFO | [P2-E9] train=2.9053 val_mae=0.3161 gate=Seller0.00/Review0.82/Image0.00/Tab0.18
+2026-05-30 13:52:52 | INFO | 🌟 최적 V10 가중치 저장: MAE=0.3161 -> /workspace/outputs_v10/best_mobile_version_v10_model.pth
+2026-05-30 14:38:32 | INFO | [P2-E10] train=2.8614 val_mae=0.3150 gate=Seller0.00/Review0.81/Image0.00/Tab0.19
+2026-05-30 14:38:33 | INFO | 🌟 최적 V10 가중치 저장: MAE=0.3150 -> /workspace/outputs_v10/best_mobile_version_v10_model.pth
+2026-05-30 14:38:35 | INFO | ✅ 학습 완료! Best MAE: 0.3150
+2026-05-30 14:38:35 | INFO | 총 소요 시간: 7.14시간 | 최종 Best MAE = 0.3150
