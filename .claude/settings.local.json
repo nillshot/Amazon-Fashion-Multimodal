@@ -12,7 +12,10 @@
       "Bash(python generate_pdf_report.py)",
       "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
       "Bash(python -c \"import os; size=os.path.getsize\\('multimodal_fashion_model_report.pdf'\\); print\\(f'File size: {size/1024:.1f} KB'\\)\")",
-      "Bash(start \"\" \"c:\\\\Users\\\\육태정\\\\Desktop\\\\BigData\\\\multimodal_fashion_model_report.pdf\")"
+      "Bash(start \"\" \"c:\\\\Users\\\\육태정\\\\Desktop\\\\BigData\\\\multimodal_fashion_model_report.pdf\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\육태정\\\\Desktop\\\\BigData\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

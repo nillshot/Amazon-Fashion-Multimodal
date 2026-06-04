@@ -150,32 +150,32 @@ def main():
     # evaluate_model(model_v7, val_loader_v7, "best_mobile_version_v7_model.pth", "Model_V7")
     
     # V8 가중치 파일 평가
-    # print("\n--- V8 모델 준비 중 ---")
-    # val_loader_v8 = DataLoader(
-    #     AmazonFashionV8Dataset(val_df, transform=val_transform), 
-    #     batch_size=EVAL_BATCH_SIZE, 
-    #     shuffle=False
-    # )
-    # model_v8 = MultitaskFashionModelV8(num_cat=df["category_id"].nunique()).to(DEVICE)
-    # evaluate_model(model_v8, val_loader_v8, "best_mobile_version_v8_model.pth", "Model_V8")
-    
-    # V9 가중치 파일 평가
-    print("\n--- V9 모델 준비 중 ---")
-    val_loader_v9 = DataLoader(
-        AmazonFashionV9Dataset(val_df, transform=val_transform), 
+    print("\n--- V8 모델 준비 중 ---")
+    val_loader_v8 = DataLoader(
+        AmazonFashionV8Dataset(val_df, transform=val_transform), 
         batch_size=EVAL_BATCH_SIZE, 
         shuffle=False
     )
+    model_v8 = MultitaskFashionModelV8(num_cat=df["category_id"].nunique()).to(DEVICE)
+    evaluate_model(model_v8, val_loader_v8, "best_mobile_version_v8_model.pth", "Model_V8")
+    
+    # V9 가중치 파일 평가
+    # print("\n--- V9 모델 준비 중 ---")
+    # val_loader_v9 = DataLoader(
+    #     AmazonFashionV9Dataset(val_df, transform=val_transform), 
+    #     batch_size=EVAL_BATCH_SIZE, 
+    #     shuffle=False
+    # )
     
     # V9 v1 가중치 파일 평가
-    print("\n--- V9 v1 모델 평가 중 ---")
-    model_v9_v1 = MultitaskFashionModelV9(num_cat=df["category_id"].nunique()).to(DEVICE)
-    evaluate_model(model_v9_v1, val_loader_v9, "best_mobile_version_v9_model_v1.pth", "Model_V9_v1")
+    # print("\n--- V9 v1 모델 평가 중 ---")
+    # model_v9_v1 = MultitaskFashionModelV9(num_cat=df["category_id"].nunique()).to(DEVICE)
+    # evaluate_model(model_v9_v1, val_loader_v9, "best_mobile_version_v9_model_v1.pth", "Model_V9_v1")
     
     # V9 v2 가중치 파일 평가
-    print("\n--- V9 v2 모델 평가 중 ---")
-    model_v9_v2 = MultitaskFashionModelV9(num_cat=df["category_id"].nunique()).to(DEVICE)
-    evaluate_model(model_v9_v2, val_loader_v9, "best_mobile_version_v9_model_v2.pth", "Model_V9_v2")
+    # print("\n--- V9 v2 모델 평가 중 ---")
+    # model_v9_v2 = MultitaskFashionModelV9(num_cat=df["category_id"].nunique()).to(DEVICE)
+    # evaluate_model(model_v9_v2, val_loader_v9, "best_mobile_version_v9_model_v2.pth", "Model_V9_v2")
     
     print("\n모든 모델 평가가 성공적으로 종료되었습니다!")
 
