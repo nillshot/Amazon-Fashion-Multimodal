@@ -384,7 +384,7 @@ def train_epoch(model, loader, optimizer, scheduler, device, acc_steps, epoch):
             loss_task
             + 0.1 * loss_ccr
             + 0.1 * loss_ccs
-            + 0.005 * loss_gate_ent   # V12 추가: 약한 Gate Entropy Loss
+            + 0.01 * loss_gate_ent   # V12 추가: Gate Entropy Loss (λ=0.01, 0.02→0.01로 유연화)
         ) / acc_steps
         loss.backward()
         

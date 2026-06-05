@@ -81,22 +81,6 @@ class AmazonFashionFullDataset(Dataset):
 # ==========================================
 # 4. 모델 아키텍처 (Hybrid Version)
 # ==========================================
-class TargetedModalityDropout(nn.Module):
-    def __init__(self, text_drop_p=0.8, general_drop_p=0.2): 
-        super().__init__()
-        self.text_drop_p = text_drop_p
-        self.general_drop_p = general_drop_p
-
-    def forward(self, t, i, tab):
-        if not self.training: return t, i, tab
-        mask = torch.ones((t.size(0), 3), device=t.device)
-        for idx in range(t.size(0)):
-            if random.random() < self.text_drop_p:
-                mask[idx, 0] = 0 # 텍스트 강력 차단
-            elif random.random() < self.general_drop_p:
-                mask[idx, random.randint(1, 2)] = 0
-        return t * mask[:, 0].unsqueeze(1), i * mask[:, 1].unsqueeze(1), tab * mask[:, 2].unsqueeze(1)
-
 class ThreeWayGMU(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -113,17 +97,16 @@ class MultitaskFashionModelV2(nn.Module):
         self.text_encoder = RobertaModel.from_pretrained("roberta-base")
         self.text_fc = nn.Linear(768, hidden_dim)
         
-        # Image Encoder (Torchvision MobileNet-V2)
-        mobilenet = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
-        self.image_encoder = mobilenet.features
+        # Image Encoder (Torchvision EfficientNet-B0)
+        effnet = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
+        self.image_encoder = effnet.features
         self.image_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.image_fc = nn.Linear(1280, hidden_dim)
+        self.image_fc = nn.Linear(1280, hidden_dim)  # EfficientNet-B0 features 출력 채널 = 1280
         
         # Tabular Encoder
         self.cat_emb = nn.Embedding(num_cat, 32)
         self.tab_fc = nn.Sequential(nn.Linear(1 + 1 + 32, hidden_dim), nn.ReLU())
         
-        self.modality_dropout = TargetedModalityDropout(0.8, 0.2)
         self.gmu = ThreeWayGMU(hidden_dim)
         
         # Multi-task Regressors
@@ -147,9 +130,8 @@ class MultitaskFashionModelV2(nn.Module):
         out_text = torch.sigmoid(self.text_regressor(t_feat_raw)).squeeze() * 4 + 1
         out_image = torch.sigmoid(self.image_regressor(i_feat_raw)).squeeze() * 4 + 1
         
-        # GMU Fusion & Final Prediction
-        t_feat, i_feat, tab_feat = self.modality_dropout(t_feat_raw, i_feat_raw, tab_feat_raw)
-        fused, gates = self.gmu(t_feat, i_feat, tab_feat)
+        # GMU Fusion & Final Prediction (V2: 텍스트 마스킹 없음 — Modality Dropout은 V3부터 도입)
+        fused, gates = self.gmu(t_feat_raw, i_feat_raw, tab_feat_raw)
         out_fused = torch.sigmoid(self.fused_regressor(fused)).squeeze() * 4 + 1
         
         return out_fused, out_text, out_image, gates

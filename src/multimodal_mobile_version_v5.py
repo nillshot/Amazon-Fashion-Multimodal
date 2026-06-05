@@ -17,15 +17,15 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 """
-Multimodal Mobile Version V5 — CCR & CCS Integration
+Multimodal Mobile Version V5 — Patch-level Cross-Attention
 =====================================================
-이 버전은 V4의 Cross-Attention 구조를 계승하면서, 
-논문 arXiv:2105.09597에서 제안된 CCR(대조적 콘텐츠 재확보) 및 
-CCS(대조적 콘텐츠 교체) Loss를 추가하여 Attention의 정교함을 극대화했습니다.
+이 버전은 V4의 Cross-Attention 구조를 이미지 패치 단위로 확장하여
+텍스트 Query와 이미지 패치 간 정밀 정렬을 실험한 버전입니다.
+(대조학습 CCR/CCS는 본 버전에 도입하지 않으며, V7에서 최초 도입됩니다.)
 
 주요 특징:
 1. Backbone: RoBERTa-base & MobileNet-V2
-2. Loss: Weighted MSE + CCR Loss + CCS Loss
+2. Loss: Weighted MSE (fused + 0.4 * text)
 3. Training: 2-Phase Curriculum Learning (Freeze/Unfreeze)
 """
 
@@ -102,33 +102,7 @@ class AmazonFashionV5Dataset(Dataset):
         }
 
 # ==========================================
-# 4. CCR & CCS Loss 클래스
-# ==========================================
-class ContrastiveAttentionLoss(nn.Module):
-    def __init__(self, margin=0.2):
-        super().__init__()
-        self.triplet_loss = nn.TripletMarginWithDistanceLoss(
-            distance_function=lambda x, y: 1.0 - F.cosine_similarity(x, y), margin=margin
-        )
-
-    def compute_ccr(self, query, keys, attn_weights, k=5):
-        # CCR: 높은 어텐션 영역은 Query와 더 가깝게, 낮은 영역은 멀게
-        dim = keys.size(-1)
-        _, indices = torch.sort(attn_weights, dim=-1, descending=True)
-        pos_idx, neg_idx = indices[:, :k], indices[:, -k:]
-        
-        pos_content = torch.gather(keys, 1, pos_idx.unsqueeze(-1).expand(-1,-1,dim)).mean(1)
-        neg_content = torch.gather(keys, 1, neg_idx.unsqueeze(-1).expand(-1,-1,dim)).mean(1)
-        
-        return self.triplet_loss(query, pos_content, neg_content)
-
-    def compute_ccs(self, query, attended_info):
-        # CCS: 이미지 정보는 가짜 텍스트보다 진짜 텍스트와 더 가깝게
-        swapped_query = torch.roll(query, shifts=1, dims=0)
-        return self.triplet_loss(attended_info, query, swapped_query)
-
-# ==========================================
-# 5. 모델 아키텍처 (V5)
+# 4. 모델 아키텍처 (V5)
 # ==========================================
 class CrossAttentionFusionV5(nn.Module):
     def __init__(self, dim):
@@ -213,28 +187,22 @@ def weighted_mse_loss(pred, target):
 
 def train_epoch(model, loader, optimizer, scheduler, device, acc_steps, epoch):
     model.train()
-    contrastive_criterion = ContrastiveAttentionLoss()
     total_loss = 0
     optimizer.zero_grad()
     pbar = tqdm(loader, desc=f"Epoch {epoch} Train")
-    
+
     for i, batch in enumerate(pbar):
         target = batch["target"].to(device)
-        out_fused, out_text, t_feat, i_keys, attn_w, attn_i, _ = model(
-            batch["input_ids"].to(device), batch["attention_mask"].to(device), 
-            batch["pixel_values"].to(device), batch["price"].to(device), 
+        out_fused, out_text, _, _, _, _, _ = model(
+            batch["input_ids"].to(device), batch["attention_mask"].to(device),
+            batch["pixel_values"].to(device), batch["price"].to(device),
             batch["price_missing"].to(device), batch["category_id"].to(device)
         )
-        
-        # 1. Base Task Loss
+
+        # Base Task Loss (Weighted MSE) — V5는 대조학습(CCR/CCS) 미적용
         loss_task = (weighted_mse_loss(out_fused, target) + 0.4 * weighted_mse_loss(out_text, target))
-        
-        # 2. V5 Contrastive Loss (CCR & CCS)
-        loss_ccr = contrastive_criterion.compute_ccr(t_feat, i_keys, attn_w)
-        loss_ccs = contrastive_criterion.compute_ccs(t_feat, attn_i)
-        
-        # 3. Total Loss Integration
-        loss = (loss_task + 0.1 * loss_ccr + 0.1 * loss_ccs) / acc_steps
+
+        loss = loss_task / acc_steps
         loss.backward()
         
         if (i+1) % acc_steps == 0 or (i+1) == len(loader):
